@@ -10,8 +10,8 @@ from chat_downloader           import ChatDownloader
 from langdetect                import detect
 
 """
-This file contains functions that are used to collect YouTube live chats, transcropts, and video statistics.
-Data is fetech through the YouTube API
+This file contains functions that are used to collect YouTube live chats, transcripts, and video statistics.
+Data is fetched through the YouTube API
 
 """
 
@@ -20,7 +20,7 @@ youtube = build('youtube', 'v3', developerKey='key')     # input YouTube API cre
 
 def get_videos_info(search_keyword, max_total_results=1000):
     """
-    This function fetches video IDs given keyword with the keyword search function.
+    This function fetches video IDs given keywords with the keyword search function.
     For each keyword, we collect all available videos with the next_page_token which goes through pages of the search result.
     Around 500 videos ids are collected for each keyword.
 
@@ -71,7 +71,7 @@ def get_videos_info(search_keyword, max_total_results=1000):
         if not next_page_token:
             break
 
-    df = pd.DataFrame(video_data)                        # return all video IDs, and duration in a DataFrame
+    df = pd.DataFrame(video_data)                             # return all video IDs, and duration in a DataFrame
 
     return df
 
@@ -117,9 +117,9 @@ def fetch_livechat_transcript_filter(df, lb = 1, ub = 300):
     """
     This function iterates through a given dataframe with video ids and,
     for each video that has live chat replay function,
-    fetches the timestampted live chat messages as well as the video transcript (subtitles).
+    fetches the live chat messages with timestamps as well as the video transcript (subtitles) with timestamps.
     Transcripts are fetched with function fetch_transcript.
-    Live chats are fetch with package ChatDownloader[1].
+    Live chats are fetched with the package ChatDownloader[1].
     To make sure that the live chats are arriving at a readible speed, we only keep videos that have a median live chat arrival time difference between lb and ub limits.
     The function uses try and except to skip videos that are missing either the live chat or the transcript.
     The function returns one dataframe for live chats across all videos and one for transcript across all videos, both with video IDs.
@@ -188,15 +188,15 @@ def fetch_livechat_transcript_filter(df, lb = 1, ub = 300):
                 livechat['Duration'] = df[df['Video ID'] == id_]['Duration'].values[0]
 
                 try:
-                    transcript = fetch_transcript(id_)                                                    # for a given video with live chat replay, fetch the video transcript
-                    transcripts.append(transcript)                                                        # collect all transcripts for given video
-                    livechats.append(livechat)                                                            # collect all live chats for given video
+                    transcript = fetch_transcript(id_)                                                   # for a given video with live chat replay, fetch the video transcript
+                    transcripts.append(transcript)                                                       # collect all transcripts for given video
+                    livechats.append(livechat)                                                           # collect all live chats for given video
 
-                except Exception as e:                                                                    # return error if encountered
+                except Exception as e:                                                                   # return error if encountered
                     print(f"{e}: {id_}")
                     pass
 
-        except Exception as e:                                                                            # return error if encountered
+        except Exception as e:                                                                           # return error if encountered
             print(f"{e}: {id_}")
             pass
 
@@ -313,7 +313,7 @@ def filter_non_english_livechat(df_livechat, df_transcript):
     total_count_per_id = df_livechat_non_english.groupby('video_id').size()           # get the number of total live chats per video
     false_count_per_id = non_english.groupby('video_id').size()                       # get the number of non-english live chats per video
     false_ratio_per_id = false_count_per_id / total_count_per_id                      # get the ratio of on-english live chats per video
-    false_ratio_per_id = pd.DataFrame(false_ratio_per_id, columns = ['non_english_ratio']) # return in dataframe
+    false_ratio_per_id = pd.DataFrame(false_ratio_per_id, columns = ['non_english_ratio'])                 # return in dataframe
 
     false_ratio_per_id_disgard = false_ratio_per_id[false_ratio_per_id['non_english_ratio'] >= false_ratio_per_id['non_english_ratio'].quantile(0.9)] # get videos with a non-english ratio higher than the 90th quantile of the distribution of all videos
     df_livechat_  = df_livechat[~df_livechat['video_id'].isin(false_ratio_per_id_disgard.index)]           # remove videos with high ratios of non-English live chats
