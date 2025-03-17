@@ -5,10 +5,11 @@ import seaborn                 as sb
 
 
 """
-This file contains functions that preprocesses the data before encoding video influence and fitting with Hawkes model.
+This file contains functions that preprocess the data before encoding video influence and fitting with Hawkes model.
 
 """
 
+# specified lists for emotion types in the same order
 
 emotions       = ['anger',       'disgust',       'fear',        'joy',       'sadness',       'surprise']
 basic_emotions = ['basic_anger', 'basic_disgust', 'basic_fear',  'basic_joy', 'basic_sadness', 'basic_surprise']
@@ -19,7 +20,7 @@ emotions_pred  = ['anger_pred',  'disgust_pred',  'fear_pred',   'joy_pred',  's
 def get_pred_label(row):
     """
     This function converts predicted emotion probabilities to binary labels at the 0.5 cutoff.
-    The 0.5 cutoff is tested to yeild optimal performance with the testing data.
+    The 0.5 cutoff is tested to yield optimal performance with the testing data.
     """
     prob = row[emotions_prob].values
     y_pred = np.zeros(prob.shape)
@@ -31,11 +32,11 @@ def get_pred_label(row):
 
 def convert_to_labels(df, df_prob, type = 'livechat'):
     """
-    This function converts predicted emotion probabilities to binary labels for live chat/transcirpt dataframes.
-    The functio takes as input the full dataframe and the dataframe of emotion probabilities.
+    This function converts predicted emotion probabilities to binary labels for live chat/transcript dataframes.
+    The function takes as input the full dataframe and the dataframe of emotion probabilities.
 
     params:
-    df: the full dataframe with text and additioanl variables
+    df: the full dataframe with text and additional variables
     df_prob: the dataframe of emotion probabilities
     type: indicate whether to process for live char or transcript data
     """ 
@@ -62,10 +63,10 @@ def convert_to_labels(df, df_prob, type = 'livechat'):
 
 def avergae_by_time_bins(df , n_bin = 8):
     """
-    This function parse each video into 8 bins of equal length, and calcualtes the rate of events in each bin.
-    It appears that, on average, the event arrival rates are stiontionary over the course of a video.
-    Subsequently, the coeficient of variation is calculated for each video as the standard deviation across 8 bins over the average.
-    Vidoes that have a coefficient of variation over the 80th quantile of the distribution over all videos are removed.
+    This function parses each video into 8 bins of equal length and calculates the rate of events in each bin.
+    It appears that, on average, the event arrival rates are stationary over the course of a video.
+    Subsequently, the coefficient of variation is calculated for each video as the standard deviation across 8 bins over the average.
+    Videos that have a coefficient of variation over the 80th quantile of the distribution over all videos are removed.
 
     params:
     df: dataframe of live chats with timestamps
@@ -85,6 +86,7 @@ def avergae_by_time_bins(df , n_bin = 8):
         return bin_intervals
     
     # calculate the frequency of events for each bin 
+    
     def calculate_average(df):                                                                                                                       
         bins = parse_bins(df)
         freq_list = []
@@ -102,6 +104,7 @@ def avergae_by_time_bins(df , n_bin = 8):
         return freq_list   
      
     # filters videos by quantiles
+    
     def filter_quantiles(data, lb = 0, ub = 0.8):
         lower_quantile = np.quantile(data, lb)
         upper_quantile = np.quantile(data, ub)
@@ -155,7 +158,7 @@ def filter_videos_by_event_quantiles(df_livechat, lower_quantile = 0.1, upper_qu
     :return: A dataframe with filtered video averages.
     """
 
-    def calculate_average(df):                                                                       # get the avergae number of videos per minute for each emotion
+    def calculate_average(df):                                                                       # get the average number of videos per minute for each emotion
         total_duration      = df['duration_minute'].unique()[0]                                      # get the total length for each video
         event_counts        = df[basic_emotions].sum()                                               # get the total number of events for each emotion
         return event_counts / total_duration                                                         # get the average number of messages per minute 
@@ -170,7 +173,7 @@ def filter_videos_by_event_quantiles(df_livechat, lower_quantile = 0.1, upper_qu
         for event_type in average.columns:                                                           # iterate through each emotion
             if not (quantiles.loc[lower_quantile, event_type] < row[event_type] < quantiles.loc[upper_quantile, event_type]): # if any of the emotion lies outside desired quantile range, return False
                 return False
-        return True                                                                                  # only return true when all emotions lie within desired quantile range
+        return True                                                                                  # only returns true when all emotions lie within the desired quantile range
 
     filtered_videos = average[average.apply(is_within_quantiles, axis = 1)]                          # keep videos where all emotions lie within quantile range
     
@@ -185,13 +188,13 @@ def shift_duplicated_timepoints(df_text, type = 'livechat'):
     The resolution of the data is 1e-3/60, and the shifting unit is 1e-4/60.
 
     params:
-    df_text: the dataframe with text and additioanl variables
+    df_text: the dataframe with text and additional variables
     type: indicate whether to process for live char or transcript data
     """ 
         
     dfs = []
     for i, df in df_text.groupby('video_id'):                    # for each video, find duplicated time points
-        shift_unit      = 1e-4/60                                # define small unit for shifting (a magnitude smaller than resolution the data)
+        shift_unit      = 1e-4/60                                # define small unit for shifting (a magnitude smaller than the resolution of the data)
         column = 'time_minute' if type == 'livechat' else 'start_minute' # specify different column names for live chat and transcript
         duplicates      = df.duplicated(column, keep = 'first')  # keep the fist duplicated timepoint unchanged
         cumcount        = df.groupby(column).cumcount()          # get the order count for multiple duplicated values
@@ -204,15 +207,15 @@ def shift_duplicated_timepoints(df_text, type = 'livechat'):
 
 def adjust_duration(df_text):
     """
-    This function adjusts the duration of the video in cases where the duration can be mis-specified.
-    The adjusted duration is the maximum between the video duration and the last live chat arrival time (within transcript).
+    This function adjusts the duration of the video in cases where the duration can be misspecified.
+    The adjusted duration is the maximum between the video duration and the last live chat arrival time (within tthe ranscript).
 
     params:
-    df_text: the dataframe with text and additioanl variables
+    df_text: the dataframe with text and additional variables
     """ 
         
     dfs = []
-    for i, df in df_text.groupby('video_id'):                                           # for each video, adjust the duration upper bound when it's mis-specified.
+    for i, df in df_text.groupby('video_id'):                                           # for each video, adjust the duration upper bound when it's misspecified.
         df['duration_minute'] = max(df['time_minute'].max(), df['duration_minute'].unique()[0])  # take the maximum between video duration and last live chat arrival time (within transcript) as the adjusted duration
         dfs.append(df)                              
     livechat_shifted = pd.concat(dfs)
