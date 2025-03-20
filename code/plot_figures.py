@@ -132,7 +132,7 @@ emotions_plot  = ['joy',  'surprise', 'anger', 'disgust', 'fear',   'sadness']
 
 def cal_spectral_radius(matrix):
     """
-    Calcuates the spectral radius for a given matrix.
+    Calculates the spectral radius for a given matrix.
 
     params:
     matrix: the input matrix to calculate spectral radius
@@ -173,7 +173,7 @@ def get_param_vals(dir_ , emotions = emotions):
         nu_coefs[i] = pd.read_csv(dir_ + f'df_nu_{i}.csv', index_col = 0)          # load nu coefficients to dataframe
         nu_coefs[i].columns    = emotions
 
-    # sort column and index orders
+    # Sort column and index orders
     alpha_mean = pd.DataFrame([alpha_coefs[e].mean() for e in emotions], index = emotions) 
     nu_mean    = pd.DataFrame([nu_coefs[e].mean() for e in emotions], index = emotions)
     gamma_mean = pd.DataFrame([gamma_coefs[e].mean() for e in emotions], index = emotions)
@@ -187,7 +187,7 @@ def get_param_vals(dir_ , emotions = emotions):
     return gamma_val, mu_val, nu_val, alpha_val
 
 
-def get_param_mean(dir_, emotions = emotions, emotions_plot = emotions_plot, num_samples = 1000):
+def get_param_mean(dir_, emotions = emotions, emotions_plot = emotions_plot, n_bootstrap = 10):
     """
     Returns the estimated values in dataframes for the heatmap visualization plot.
 
@@ -243,19 +243,32 @@ def get_param_mean(dir_, emotions = emotions, emotions_plot = emotions_plot, num
     eigenvalues     = np.linalg.eigvals(alpha_val)
     spectral_radius = max(abs(eigenvalues))
     
-    # obtain interval for the spectral radius by sampling the alpha matrix with mean and standard deviation
-    num_samples     = num_samples
-    sample_matrices = []
-    for _ in range(num_samples):
-        sample_matrix = alpha_mean + np.random.randn(*alpha_mean.shape) * alpha_std  # generate 'num_samples' matrices by sampling from a normal distribution centered at 'alpha_mean' with standard deviation 'alpha_std'
-        sample_matrices.append(sample_matrix)
-    spectral_r = [cal_spectral_radius(matrix) for matrix in sample_matrices]         # obtain the spectral radius of sampled matrixes
-    max_spectral_radius = np.max(spectral_r)
-    min_spectral_radius = np.min(spectral_r)
-    scale = [min_spectral_radius /(1-min_spectral_radius ), max_spectral_radius/ (1-max_spectral_radius)] # get the interval of the ratio of endogenous events with the minimal and maximum spectral radius
+    # obtain interval for the spectral radius from bootstrapped estimations of the alpha matrix
+    
+    dfs_alpha = []
+    
+    for i in range(n_bootstrap):                                               # Create 10 dataframes, one for each bootstrap iteration
+        bootstrap_data = {}
+        for emotion in emotions_plot:
+            row_values = alpha_coefs[emotion].iloc[i]                 # Extract data for each emotion
+            bootstrap_data[emotion] = {col: row_values[col] for col in emotions_plot}
+        
+        df = pd.DataFrame.from_dict(bootstrap_data, orient='index')   # Create DataFrame with proper order
+        
+        df = df[emotions_plot]                                        # Ensure columns are in the correct order
+        df = df.reindex(index=emotions_plot)                          # Ensure rows are in the correct order
+        dfs_alpha.append(df)
+
+    matrices = [df.values for df in dfs_alpha]                        # collect each of the alpha matrix
+    spectral_r = [cal_spectral_radius(matrix) for matrix in matrices] # calculate the spectral radius of each alpha matrix
+
+    scale_list = []                                                   # calculate the ratio of endo vs. exo activities from the spectral radius
+    for i in spectral_r:
+        s = i /(1- i)
+        scale_list.append(s)                                          # from this list we can calculate the average ratio of endo vs. exo as well as standard deviation
     
 
-    return alpha_heatmap, nu_heatmap, gamma_heatmap, mu_heatmap,  alpha_mean, nu_mean, gamma_mean, mu_mean, spectral_radius, scale
+    return alpha_heatmap, nu_heatmap, gamma_heatmap, mu_heatmap,  alpha_mean, nu_mean, gamma_mean, mu_mean, spectral_radius, scale_list 
 
     
 def results_visualization(figure, 
