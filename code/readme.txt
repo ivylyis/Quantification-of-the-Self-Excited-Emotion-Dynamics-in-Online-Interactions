@@ -21,5 +21,3 @@ fit_preprocess.py
 fit_hawkes.py
 - calibrate the Hawkes model to estimate parameters for each emotion
 
-plot_figures.py
-- generates figures in the paper including result visualizations and descriptive plots
